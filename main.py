@@ -5,7 +5,7 @@ from transformers import HunYuanVLForConditionalGeneration
 from PIL import Image
 import torch
 
-# Hi 2026
+# Hi 2026 1
 
 def parse_args():
     default_image = os.path.join(os.path.dirname(__file__), "12.png")
