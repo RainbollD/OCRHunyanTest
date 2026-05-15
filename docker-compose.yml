@@ -1,0 +1,21 @@
+services:
+  ocr:
+    build: .
+    container_name: ocr_hunyuan
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+      - hunyuan_cache:/root/.cache/huggingface
+    environment:
+      - HF_HOME=/root/.cache/huggingface
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  hunyuan_cache:
