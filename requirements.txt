@@ -1,7 +1,4 @@
-git+https://github.com/huggingface/transformers@82a06db03535c49aa987719ed0746a76093b1ec4
-Pillow
-huggingface_hub
-accelerate
-sentencepiece
-protobuf
-torchvision
+# Client-side dependencies only. The model and vLLM run in the container (docker-compose.yml).
+requests
+Pillow      # image handling; also used to encode rasterized PDF pages and for --max-side
+pypdfium2   # only needed for PDF input (permissive Apache/BSD license, no AGPL)

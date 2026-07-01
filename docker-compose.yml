@@ -1,14 +1,41 @@
 services:
   ocr:
-    build: .
+    # Official vLLM OpenAI-compatible server image.
+    # HunyuanOCR needs vLLM >= 0.12.0; v0.24.0 is the latest stable (built for CUDA 12.9).
+    image: vllm/vllm-openai:${VLLM_TAG:-v0.24.0}
     container_name: ocr_hunyuan
-    stdin_open: true
-    tty: true
+    # vLLM workers need host IPC (shared memory), otherwise they can crash on startup.
+    ipc: host
+    entrypoint: ["vllm", "serve"]
+    command:
+      - tencent/HunyuanOCR
+      - --served-model-name
+      - hunyuan-ocr
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      # Memory savers recommended by Tencent for OCR:
+      # every image is unique, so a prefix / mm-processor cache only wastes VRAM.
+      - --no-enable-prefix-caching
+      - --mm-processor-cache-gb
+      - "0"
+      # --- VRAM tuning (target card is 16 GB, below the official 20 GB minimum). See .env ---
+      - --gpu-memory-utilization
+      - "${GPU_MEMORY_UTILIZATION:-0.90}"
+      - --max-model-len
+      - "${MAX_MODEL_LEN:-16384}"
+      - --max-num-seqs
+      - "${MAX_NUM_SEQS:-4}"
+    ports:
+      - "${PORT:-8000}:8000"
     volumes:
-      - .:/app
+      # Persist the downloaded model between restarts.
       - hunyuan_cache:/root/.cache/huggingface
     environment:
       - HF_HOME=/root/.cache/huggingface
+      # HunyuanOCR is public; a token is usually not needed. Uncomment if you hit auth errors.
+      # - HUGGING_FACE_HUB_TOKEN=${HUGGING_FACE_HUB_TOKEN:-}
     deploy:
       resources:
         reservations:
@@ -16,6 +43,14 @@ services:
             - driver: nvidia
               count: all
               capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+      # First boot downloads the model (~2-6 GB) and loads it; don't flag unhealthy meanwhile.
+      start_period: 900s
+    restart: unless-stopped
 
 volumes:
   hunyuan_cache:
